@@ -47,3 +47,29 @@ TCP is way more complex compared to UDP. Here I'm diving into TCP features witho
 * **Reliable Delivery**: TCP ensures that all application data bytes are delivered to recipient, and none should be missed. TCP sender and receiver jointly implements Reliable Delivery procedures. Therefore, TCP implements **ARQ (Automatic Repeat Request**) for data recovery.
 ![picture](data/retransmission.png)
 Suppose Src(left laptop) sends two packets 1 and 2. The receiver(left side laptop) only received 2nd packets. There should be a mechanism to make the Src understand that 1st packet is not delivered via Rst. Then the sender should Re-Transmit lost packet. The act of Re-transmission is called **ARQ**.
+
+1) how receiver detects that packets are malformed? Checksum field.
+
+2) How sender can determine whether the receiver has received the packet?
+
+3) How long the sender should wait for ACK from the receiver?
+
+4) What if ACK itself is lost?
+
+5) How receiver will manage when it receives packets out of sequence?
+
+6) What if receiver is slower than sender Or receiver receives duplicate copies of the packet?
+
+7) What if network itself is slower or recover over a period of time?
+
+8) With how much rate should the sender sends the packets to receiver?
+
+**TCP ARQ** mechanism takes above stated points into consideration to implement its reliable data delivery functionality over lossy network.
+
+Why TCP is called **Byte Oriented** protocol?
+
+TCP keeps track of application data sent and received at **Byte Level**. TCP sender and receiver keeps track of how many bytes is sent and received by keeping explicit track of each byte of data separately. Each byte of data is tracked by a unique id called **sequence No.** at either ends. However, sending and receiving speed may not be the same in both machines. Therefore, TCP sender and receiver both need **Sending and Receiving buffers** implemented as **circular queues**. Remember, TCP is bi-directional.
+![picture](data/TCP_stream.png)
+Note that, data in sender buffer can be categorized into three parts: data which is sent to the receiver, data which is about to send to the receiver and data which has not yet come from sending process. TCP protocol in transport layer receives application data from application layer and glues **TCP header** to the application data, forms **TCP Segment**.
+![picture](data/segment.png)
+Note that, TCP is byte Oriented, while IP protocol is packet Oriented. Simply, IP datagram is called **packet**. In receiving side, the transport layer identifies which process the packet belongs to by specifying port number in TCP header. Size of segments is determined dynamically and keeps on changing depending on network or recipient state. Also, TCP chooses segment size to avoid unnecessary fragmentation of IP layer. Segments contain "N" bytes of data, where N is segment size. For example if a segment size is 512bytes, it means there are 512 bytes of application data is in the segment. TCP stamps every byte it is sending in segments with a unique number called **sequence number**. The SEQ No of first byte is also treated a **Segment number**.
