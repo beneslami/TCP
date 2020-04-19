@@ -77,3 +77,42 @@ Note that, TCP is byte Oriented, while IP protocol is packet Oriented. Simply, I
 Following Segment number, there is **Acknowledgment Number** which is a sequence number of a segment which TCP receiver expects from the sender to send in the next segment. ACK NO. 2000 means "Hey! I have successfully received 1999 bytes you sent, Now I'm waiting for 2000 bytes and more"
 
 **TCP Piggyback**: In the same segment, TCP sender can ship next payload bytes, specifying new sequence number and at the same time ACKnowledge the previous TCP data it has received from peer using ACK NO and ACK bit. To understand more, there are three types of segments: Data Segment, Pure Ack Segment, Data + Ack Segment.
+
+Each time a sender sends a message, it starts a timer. Receiver sends an acknowledgment back to the sender when it receives a message, so that, sender knows that it successfully transmitted the message. If a message is lost, the timer goes off, and sender retransmits the data.
+
+The concept of connection oriented is illustrated in below picture:
+![picture](data/connection_oriented.png)
+
+Each stage is executed one after another. For connection less programs, phase 1,2 and 4 are not present.
+TCP connection is uniquely defined by 4 tuples:
+
+[TCP client IP address, TCP client Port Address, TCP server IP address, TCP Server Port address]
+
+Above tuple is a unique identity of TCP connection.
+
+### Three way handshake
+
+In three way handshake stage, client which is Active Opener, sends **TCP SYN** packet with a sequence number. Note that, TCP SYN packet is a packet which the SYN flag is set. (ISN is abbreviated of Initial sequence Number).
+
+1) SYN = want to initiate TCP connection. All my future segments have seq no 100+. The packet does not contain any application data, consume 1 sequence number.
+
+2) ACK- client's request for connection initiation specified in segment with seq no 101. All future segments from the sever will have seq no 1000+.
+
+3) ACK- request specified in server's segment with sequence no 1000 -1 is accepted.
+
+In the 1st and 2nd, each party is telling the other party the ISN it wishes to use. So, steps 1 and 2 combined is called sequence number synchronization. At the end of stage 2, client can send TCP data segments to the server. TCP server can only ACK the TCP data from client. TCP server cannot send its own TCP data segments to the client. So, this situation is called **uni-direction (Half Open) communication**. At the end of stage 3, the server has got the permission from the client, and now TCP server can also send data to the TCP client.(**bi-directional communication**)
+
+In closing the connection, the approach is quite similar with that of establishing the connection. The client is active closer and the server is passive closer. For finishing the connection, first the client sends a **FIN** message. The client wishes to terminate the connection using close(). Server receives the connection termination request, and acknowledges the request by sending ACK. When the client receives the Ack from the server, it closes the connection. So, after the second stage, the client has closed the connection successfully. After this point, the client cannot send segments with progressive seq# anymore. However, it can only ACKnowledge the segments coming from the server(Half close). Since the server knows that the client is looking to terminate the connection, it will also initiate connection termination by sending FIN segment to the client. At the 4th stage, the client sends ACK confirming that 1600th segments has been received and approves the connection termination request by sending (ACK 1601). Note that, the sequence no in state 2 and 3 is the same.
+![picture](data/threewayhandshake.png)
+
+some useful notes:
+* SYN segments do not contain any application data, yet they consume 1 sequence number because they need to be acknowledged.
+* FIN segments **MAY** not contain any application data, yet they consume at least 1 sequence number because they need to be acknowledged.
+* Pure ACKs do not contain any application data, they do not consume any sequence number either because ACKs are not acknowledged.
+* Data segments consume as many sequence numbers as the number of application bytes they are carrying as payload.
+
+Rule: **Any segments that needs an acknowledgment consumes a sequence number**.
+
+Now, suppose there is a dead server and the client wants to reach it out. The client sends SYN message but it does not receive any SYN/ACK message from the server. The client waits for some times and resend SYN again, and there is no answer still. For how long the client tends to send the server its SYN message?
+Answer: By default, number of maximum retries is **5**. But, there is another concept called **Exponential Back-off**. Each time the client does not receive any response from the server **for a specific time**, it re-sends it. The specific time starts from one and grows exponentially with the power of 2.
+![picture](data/backoff.png) 
