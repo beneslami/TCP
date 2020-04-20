@@ -115,4 +115,27 @@ Rule: **Any segments that needs an acknowledgment consumes a sequence number**.
 
 Now, suppose there is a dead server and the client wants to reach it out. The client sends SYN message but it does not receive any SYN/ACK message from the server. The client waits for some times and resend SYN again, and there is no answer still. For how long the client tends to send the server its SYN message?
 Answer: By default, number of maximum retries is **5**. But, there is another concept called **Exponential Back-off**. Each time the client does not receive any response from the server **for a specific time**, it re-sends it. The specific time starts from one and grows exponentially with the power of 2.
-![picture](data/backoff.png) 
+![picture](data/backoff.png)
+
+### TCP timeout and Retransmission
+
+TCP protocol provides a reliable data delivery service between two applications using underlying network layer (IP) that may lose, duplicate, or reorder packets. In order to provide reliable delivery, TCP resends data it believes has been lost. BUT how TCP sender would know the data segments it had sent has been lost? Simple! TCP sender sets a timer when it sends data segments and expects an ACK from the receiver for this data segment before the timer expires. If ACK arrives before timers goes off, TCP believes the segment has been successfully delivered. If timer goes off and ACK has not yet arrived, TCP assumes segment has been lost and it retransmits the segment again. The time interval of the timer is called **Retransmission Timeout (RTO)**. What should be the appropriate value of RTO? Due to stochastic behavior of the network, the value of RTO needs to be calculated dynamically by TCP sender during the course of operation. According to below picture, the bigger or smaller the amount of RTO have some problems:
+
+long RTO: causes network under utilization.
+![picture](data/longRTO.png)
+
+small RTO: causes unnecessary retransmission and network congestion.
+![picture](data/smallRTO.png)
+
+Also, there is another problem which is called **Retransmission Ambiguity problem**, that is, in false retransmission, the sender cannot precisely calculate the amount of RTT. The solution to this problem is **Karns algorithm**. Karns algorithm has two phases:
+* Ignore measured RTT for retransmitted segments for RTO evaluation:
+ * Because measured RTT for retransmitted segments would **skew** the RTO incorrectly, throw away the unreliable data.
+ * This solves the problem of retransmission Ambiguity.
+ * But at the same time, this will prevent sending TCP to take corrective measures to segment losses which is potentially due to network congestion breaking the main strength of TCP - Adoptive transmission.
+* Use Back-off RTO for retransmitted segments and do not consider their measured RTT for RTO evaluation.
+ * subsequent retransmission timers are double the previous
+ * The back-off factor is not reset until there is a successful data transmit that does not require a retransmission.
+
+All BS aside, simply the algorithm says that there is a base amount of RTO(Let's say 2sec). Whenever the sender sends a segment and receives its corresponding ACK within the 2 secs, it's OK. If for any reason, the ACK is not received within RTO, then the sender retransmits the segment again and RTO is doubled of the previous. Finally, if the ACK is received successfully, the sender resets the amount of RTO to the base and goes on transmitting normally. 
+
+This exponentially slows down TCP from further congesting the already congested networks. Note that, RTT measurement of transmitted segments is not used for RTO evaluation. When TCP sender is able to send TCP segments without having to retransmit it, inflated RTO value is restored to the original. RTT of this segment is  considered for RTO evaluation.
