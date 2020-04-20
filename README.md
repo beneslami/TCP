@@ -127,15 +127,31 @@ long RTO: causes network under utilization.
 small RTO: causes unnecessary retransmission and network congestion.
 ![picture](data/smallRTO.png)
 
-Also, there is another problem which is called **Retransmission Ambiguity problem**, that is, in false retransmission, the sender cannot precisely calculate the amount of RTT. The solution to this problem is **Karns algorithm**. Karns algorithm has two phases:
-* Ignore measured RTT for retransmitted segments for RTO evaluation:
- * Because measured RTT for retransmitted segments would **skew** the RTO incorrectly, throw away the unreliable data.
- * This solves the problem of retransmission Ambiguity.
- * But at the same time, this will prevent sending TCP to take corrective measures to segment losses which is potentially due to network congestion breaking the main strength of TCP - Adoptive transmission.
-* Use Back-off RTO for retransmitted segments and do not consider their measured RTT for RTO evaluation.
- * subsequent retransmission timers are double the previous
- * The back-off factor is not reset until there is a successful data transmit that does not require a retransmission.
+Also, there is another problem which is called **Retransmission Ambiguity problem**, that is, in false retransmission, the sender cannot precisely calculate the amount of RTT. TCP is unable to distinguish two separate acknowledgements for the same sequence number. A timeout occurs before an ACK is received, and packet is retransmitted. The ACK for packet arrives a bit later and the source measures a wrong value for the RTT.
 
-All BS aside, simply the algorithm says that there is a base amount of RTO(Let's say 2sec). Whenever the sender sends a segment and receives its corresponding ACK within the 2 secs, it's OK. If for any reason, the ACK is not received within RTO, then the sender retransmits the segment again and RTO is doubled of the previous. Finally, if the ACK is received successfully, the sender resets the amount of RTO to the base and goes on transmitting normally. 
+![picture](data/ambiguity.png)
+
+The solution to this problem is **Karns algorithm**. Karns algorithm has two phases:
+* Ignore measured RTT for retransmitted segments for RTO evaluation, Because measured RTT for retransmitted segments would **skew** the RTO incorrectly, throw away the unreliable data. In other word, using the original transmission for RTT measurement, causes Over-Estimation, whereas using  the most recent retransmission for RTT measurement causes Under-Estimation and thus gives very negative effect.
+* Use Back-off RTO for retransmitted segments and **do not consider their measured RTT for RTO evaluation**. Subsequent retransmission timers are double the previous. The back-off factor is not reset until there is a successful data transmit that does not require a retransmission.
+
+All BS aside, simply the algorithm says that there is a base amount of RTO(Let's say 2sec). Whenever the sender sends a segment and receives its corresponding ACK within the 2 secs, it's OK. If for any reason, the ACK is not received within RTO, then the sender retransmits the segment again and RTO is doubled of the previous. Finally, if the ACK is received successfully, the sender resets the amount of RTO to the base and goes on transmitting normally.
 
 This exponentially slows down TCP from further congesting the already congested networks. Note that, RTT measurement of transmitted segments is not used for RTO evaluation. When TCP sender is able to send TCP segments without having to retransmit it, inflated RTO value is restored to the original. RTT of this segment is  considered for RTO evaluation.
+
+As we see, timer based retransmission often leads to under-utilization of network capacity. Therefore, there is another technique for handling segment loss detection and retransmission called **Fast Retransmit**. It is called Fast Retransmit because TCP sender immediately detects the segment loss and retransmit it instantly. In Fast Retransmission, TCP sender triggers segment retransmission based on feedback from receiver rather than relying on retransmission timer expiry, hence segment loss repair is even quicker. A typical TCP implementation implements both Fast Retransmission and timer based retransmission strategy, so don't think one of them is substitute for other one.
+
+Suppose, client sends 4 segments simultaneously, and the segment with seq no 200 is lost, just like below diagram:
+
+![picture](data/fastretransmission.png)
+
+The server then sends ACK with seq no 201, meaning that segment 200 has not yet arrived. At this time, what will the client send? just segment 200 or something else? Here is the complicated part! There is a timer as well! We should take it into account. So to start the story again with the presence of the timer, it is like this:
+When the client sends a chunk of segments with corresponding seq nos, the server receives them in a array like buffer. When let's say segment 200 is lost, the position of corresponding segment will be empty. So, the server realizes that the segment 200 is not yet arrived. Therefore, it sends ACK with No 201 meaning that the segment 200 has not yet arrived. So, when the ACK is received by the client, it is the first ACK corresponding to the segment with seq no 200. But since TCP client has sent segment 200 **and** retransmission timer corresponding to the segment 200 has not yet expired, the TCP sender do not take any action as of now. So, if the client has some segment to send, it will send (segments 500, 600 and 700).
+
+![picture](data/fastretransmission2.png)
+
+The server receives three new incoming segments and still the place of segment 200 is empty, therefore, it resends the ACK 201 again for the response of segment 500. similarly, the server again responses the client the ACK 201 for reception of segment 600, and again for reception of segment 700.
+
+![picture](data/fastretransmission3.png)
+
+So, at this time, if the TCP client receives 3 consecutive ACKs for specific seq no, it will retransmit the segment with that seq number to fill the place of that segment in the server. This situation is called **Triple duplicated ACK**.
