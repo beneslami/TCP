@@ -155,3 +155,26 @@ The server receives three new incoming segments and still the place of segment 2
 ![picture](data/fastretransmission3.png)
 
 So, at this time, if the TCP client receives 3 consecutive ACKs for specific seq no, it will retransmit the segment with that seq number to fill the place of that segment in the server. This situation is called **Triple duplicated ACK**.
+
+|**Timer Based Retransmission**| **Fast Retransmission**|
+|:-------------------:|:------------------:|
+|Segments are retransmitted when Retransmission timer expires| Segments are retransmitted instantly when sender receives 3 duplicated ACK |
+|Result in sender to sit idle for some time | Instant retransmission of lost or out of order segments |
+| Network under utilization | Network optimal utilization |
+| no redundant retransmission of segments | dup ACKs lead to redundant retransmission of segments, network BW wastage, contribution to congestion, etc. |
+
+Similarly, this approach can be implemented when loosing multiple segments and having multiple empty place in receiver side. In this situation, the receiver sends ACK corresponding to the first lost segment. The question is how to improve such mechanism of sending multiple ACKs to make the sender re-sends lost segments? By using **SACK**.
+
+One of the 3-duplicated ACK disadvantages is redundant retransmission.
+![picture](data/redundant.png)
+
+### Selective Acknowledgments (SACKs)
+The goal of SACK is to fill the buffer of the recipient empty holes in one shot (1 RTT). Selective ACKs are ACKs with additional capability that such ACKs can carry range of integers along with them. TCP header formant allows ACKs to carry set of pair of integers which represents holes in TCP recipient buffer.
+
+![picture](data/SACK.png)
+
+SACK blocks are pair of 32 bit integers representing the holes. These are specified in **options** part of TCP header. A SACK can contain 3 or 4 SACK blocks. SACK enabled receiver can repair its 3 or 4 holes **per RTT** as compared to non-SACK enabled receiver which can repair only one hole per RTT.
+
+TCP Acknowledgment number is the mechanism which TCP receiver uses to tell the TCP sender how many bytes it has received, and what it expects next. TCP receiver **DO NOT** send ACK for every segment or byte of data it receives. Acknowledging every byte by receiver will trigger too many ACK segments, if this happens, then TCP header overhead consumes more network bandwidth and resources than TCP payload. When TCP receiver receives too many segments in a quick succession. it acknowledges all of them by single ACK. Of course TCP cannot delay the cumulative ACK segments indefinitely, otherwise it will trigger unnecessary retransmission. Cumulative ACKs which are also called Delayed-ACK causes less traffic.
+
+As soon as the receiver sends SACK, it start Delayed ACK timer. As long as this timer is running, TCP does not send any fresh ACK. After running out of the Delayed ACK timer, the receiver sends cumulative ACK to the sender, and starts the timer again. If the receiver has some data to send, it will send the data thereby acknowledging the pending segments, and it will cancel the Delayed timer and reset it.
