@@ -178,3 +178,41 @@ SACK blocks are pair of 32 bit integers representing the holes. These are specif
 TCP Acknowledgment number is the mechanism which TCP receiver uses to tell the TCP sender how many bytes it has received, and what it expects next. TCP receiver **DO NOT** send ACK for every segment or byte of data it receives. Acknowledging every byte by receiver will trigger too many ACK segments, if this happens, then TCP header overhead consumes more network bandwidth and resources than TCP payload. When TCP receiver receives too many segments in a quick succession. it acknowledges all of them by single ACK. Of course TCP cannot delay the cumulative ACK segments indefinitely, otherwise it will trigger unnecessary retransmission. Cumulative ACKs which are also called Delayed-ACK causes less traffic.
 
 As soon as the receiver sends SACK, it start Delayed ACK timer. As long as this timer is running, TCP does not send any fresh ACK. After running out of the Delayed ACK timer, the receiver sends cumulative ACK to the sender, and starts the timer again. If the receiver has some data to send, it will send the data thereby acknowledging the pending segments, and it will cancel the Delayed timer and reset it.
+
+### Sliding Window
+The goal of having sliding window is to prevent overwhelming the receiver's buffer and also make sure the network resources are not under utilized. So each party has a ring buffer which denotes the window. As TCP is duplex connection, each sender and receiver has send and receive window. So, as a result, the send window of one device is the receive window of other device and vice versa.
+
+TCP is a sliding window protocol, meaning it manages its flow control, congestion control, reliable data delivery by managing its send/receive windows. TCP send window can be classified in 4 categories.(Remember, TCP is byte oriented protocol, it keeps track of data flow at byte level and not segment level).
+![picture](data/TCPwindow.png)
+At any given point of time, we can classify the bytes of data in send window of TCP sender into four categories.
+
+***First category***) bytes 28 to 30 which are sent by the sender and get acknowledged by receiver (sender received the ACKs successfully).
+
+***Second category***) bytes 31 to 33 which are injected to the network via sender but not yet acknowledged by the receiver. it means that the sender has not yet received any ACK for bytes 31, 32 and 33.
+
+***Third category***) bytes 34 to 36 which the sender has not yet injected to the network. But TCP sender is allowd to push these bytes into the network, because TCP receiver is ready to accept data.
+
+***Forth category***) bytes 37 to 43 which TCP sender has received them from application process but it is not allowed to inject them to the network, because TCP receiver is not in the state of receiving new data. One reason probably is that the receiving window size in receiver side is not large enough to accommodate those amounts of bytes.
+
+TCP receiver window on the other hand, has 3 categories like below:
+![picture](data/TCPrcvwindow.png)
+***First category***) bytes which are received successfully and their corresponding ACKs are already sent.
+
+***Second category***)Those amounts of bytes which the receiver is waiting for the sender to send them. As soon as the receiver receives bytes 31 to 36, it immediately stores them to its receiving buffer.
+
+***Third category***)Those bytes which the receiver is not in a situation to receive them.
+
+As a general rule, the size of send window in sending machine is:
+```
+Total Number of Bytes Which Sender Can Send + Not Send but Ready to Send
+```
+![picture](data/senderwndsize.png)
+Similarly, the size of usable window size is defined as below:
+```
+Total Number of Bytes which Sender has not sent but ready to send and can send at any timer
+```
+![picture](data/senderusablewndsize.png)
+
+If the receiver ever happens to receive bytes which falls outside the receive window, receiver will silently discard them. So, TCP receiver advertise the size of its receive window in every ACK that it sends to the TCP sender. So, the TCP sender having received this advertisement sets the size of its send window to the value advertised by receiver. By definition, send window determines the number of bytes the TCP sender can send in one go. Thus, TCP receiver controls the size of TCP sender's send window, this controls the rate at which the TCP sender can send the data to receiver. This is called **Window Based Flow Control**. overwhelming or congested TCP receiver tends to reduce its receive window size and advertise reduced size of its receive window in ACK to TCP sender, this, mitigating the congestion. So, in TCP connection, both peers advertise the size of their respective TCP receive window to other during TCP connection establishment phase (Three way handshake). it is worth seeing the TCP header once more:
+![picture](data/TCP-headers.png)
+The field Window with 16 bits denotes that each peer can have up to 65535B of window size. In 3-way handshake phase, because each peer doesn't have any insight about the underlying network condition, both choose the maximum window size at the beginning.
