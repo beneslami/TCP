@@ -216,3 +216,36 @@ Total Number of Bytes which Sender has not sent but ready to send and can send a
 If the receiver ever happens to receive bytes which falls outside the receive window, receiver will silently discard them. So, TCP receiver advertise the size of its receive window in every ACK that it sends to the TCP sender. So, the TCP sender having received this advertisement sets the size of its send window to the value advertised by receiver. By definition, send window determines the number of bytes the TCP sender can send in one go. Thus, TCP receiver controls the size of TCP sender's send window, this controls the rate at which the TCP sender can send the data to receiver. This is called **Window Based Flow Control**. overwhelming or congested TCP receiver tends to reduce its receive window size and advertise reduced size of its receive window in ACK to TCP sender, this, mitigating the congestion. So, in TCP connection, both peers advertise the size of their respective TCP receive window to other during TCP connection establishment phase (Three way handshake). it is worth seeing the TCP header once more:
 ![picture](data/TCP-headers.png)
 The field Window with 16 bits denotes that each peer can have up to 65535B of window size. In 3-way handshake phase, because each peer doesn't have any insight about the underlying network condition, both choose the maximum window size at the beginning.
+
+One example which illustrates the role of send window and receive window in keeping track of bytes sent and received between TCP peers.
+
+rule1: **Whenever the PURE ACK IS  RECEIVED, send window of recipient of ACK slides**.  Just focus on below picture:
+![picture](data/slidingwnd.png)
+First, the sender sends 2 bytes from its window, that is 3 and 4. When the sender receives ACK number 5, it means that those sent bytes have been delivered successfully. So, it's time for the sender to slide its window 2 bytes.
+
+rule2: **Whenever the DATA SEGMENT IS RECEIVED, receive window of recipient of data segment slides**.
+![picture](data/slidingwndrcvd.png)
+According to receive window from receiver side, the receiver expects to receive bytes with the starting sequence of 3. In case of not having packet loss or anything irregular, when the expected ACK arrives, the sending and receiving window of sender and receiver is equal respectively.
+
+rule3: **Whenever the DATA SEGMENT COMBINED WITH ACK IS RECEIVED, receive and send window of recipient slides**.
+
+Note: Windows slides whenever there is reception of Data Segment or ACK, TCP sender windows (send or receive) do not slides when TCP SENDS any type of segment be it data segment or ACK or both.
+
+ Let's dive deep into the data exchange via TCP from scratch. Remember, this part is really technical and it needs your full attention. Suppose we have a client/server system, which client wants to send 140B data request to the server. Afterwards, the server replies in two installments- 80B reply and 280B reply. We shall see how send and receive windows on either ends adjusted/slides as the data exchange happen between client and server as per the above scheme.
+
+ First Step is 3-way handshake as below:
+ ![picture](data/3-wayhandshake.png)
+ The client sends SYN segment with **sequence number 0** and declare its receiving window size by telling **WS = 200**. Seq No. 1 in SYN segment denotes that the next bytes to send will start with **seq No. 1**.
+
+ On the other hand, the server replies the client by ACK segment, mentioning its **sequence number 240** and its receiving window size **WS = 360**. Seq No. 240 in SYN/ACK segment denotes that the next bytes to send will start with **seq No. 241**.
+
+So, according to above information, we should specify each peers' send and receive window after connection establishment:
+
+**Sender**:
+![picture](data/sendwindows.png)
+
+**Receiver**:
+![picture](data/receivingwindows.png)
+
+
+As you can see, there are two pointers in both buffers. Send buffer uses two pointers: ***UNA*** and ***NXT***, but receive buffer only uses ***NXT***. ***UNA*** denotes to the bytes which are sent but not yet acknowledged. So, ***UNA*** is a pointer which points to the first such byte present in the send window of TCP sender. ***NXT*** pointer on the other hand, is a pointer which points to that particular byte number in TCP send window which TCP has not yet pushed into the network. So, after connection establishment, both pointers point to the first byte of the send window. Similarly, for receive window, TCP keeps track of bytes of data presented in the receive window using only ***NXT*** pointer. So ***NXT*** pointer points to that particular sequence number which TCP receiver is expecting from the TCP sender. So, at the beginning of connection establishment, in the receiving buffer of client, sequence number 241 is expected. So, you must be noticed the correspondence between send and receive windows between client and server: sending window of the client is the clone of that of the server and vice versa.
