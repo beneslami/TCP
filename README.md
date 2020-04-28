@@ -242,10 +242,20 @@ Note: Windows slides whenever there is reception of Data Segment or ACK, TCP sen
 So, according to above information, we should specify each peers' send and receive window after connection establishment:
 
 **Sender**:
+
 ![picture](data/sendwindows.png)
 
 **Receiver**:
+
 ![picture](data/receivingwindows.png)
 
 
 As you can see, there are two pointers in both buffers. Send buffer uses two pointers: ***UNA*** and ***NXT***, but receive buffer only uses ***NXT***. ***UNA*** denotes to the bytes which are sent but not yet acknowledged. So, ***UNA*** is a pointer which points to the first such byte present in the send window of TCP sender. ***NXT*** pointer on the other hand, is a pointer which points to that particular byte number in TCP send window which TCP has not yet pushed into the network. So, after connection establishment, both pointers point to the first byte of the send window. Similarly, for receive window, TCP keeps track of bytes of data presented in the receive window using only ***NXT*** pointer. So ***NXT*** pointer points to that particular sequence number which TCP receiver is expecting from the TCP sender. So, at the beginning of connection establishment, in the receiving buffer of client, sequence number 241 is expected. So, you must be noticed the correspondence between send and receive windows between client and server: sending window of the client is the clone of that of the server and vice versa.
+
+Following the example, I'm dividing the procedure into three phases:
+
+**Phase 1)**
+
+Client starts sending a segment with sequence number of 1, containing 140B of data, and declaring that its receiving window size is 200B (Seq#1, 140B, WS = 200). As soon as the client sends this segment through the network, it will update its sending window. By updating, the ***NXT*** pointer will point to the byte 141, since 140B is sent and the client is ready to send from 141th byte. Remember that, at this time, the sending window will not slide. Let's assume segment with sequence number 1 is received by the server. As a result of receiving the segment by the server, the server's receiving buffer gets updated. The update is in a way that the sliding window of receiving buffer slides with the amount of received bytes and along with that, ***NXT*** pointer points to the next byte (141th). Now, suppose the server successfully received the segment from the client and in reply sends its own data segment which carries payload of 80B as well as this segment contains ACK No. 141. It means that this segment is not only data segment, but also an acknowledgment of previous data segment. As soon as the server sends its data segment, it will update the ***NXT*** pointer in its sending window. As soon as the client receives the segment from the server, it realizes that its sent bytes have been received successfully and it can slide its sending window and update its corresponding pointers. As the segment the server has sent is data segment, the client receives the data and slides its receiving window. After that, the client sends a pure ACK segment with its associated seq num. I assume that the third segment from client is in transit through the network an has not been received to the server yet.
+
+![picture](data/example1.png)
