@@ -190,7 +190,7 @@ At any given point of time, we can classify the bytes of data in send window of 
 
 ***Second category***) bytes 31 to 33 which are injected to the network via sender but not yet acknowledged by the receiver. it means that the sender has not yet received any ACK for bytes 31, 32 and 33.
 
-***Third category***) bytes 34 to 36 which the sender has not yet injected to the network. But TCP sender is allowd to push these bytes into the network, because TCP receiver is ready to accept data.
+***Third category***) bytes 34 to 36 which the sender has not yet injected to the network. But TCP sender is allowed to push these bytes into the network, because TCP receiver is ready to accept data.
 
 ***Forth category***) bytes 37 to 43 which TCP sender has received them from application process but it is not allowed to inject them to the network, because TCP receiver is not in the state of receiving new data. One reason probably is that the receiving window size in receiver side is not large enough to accommodate those amounts of bytes.
 
@@ -259,3 +259,34 @@ Following the example, I'm dividing the procedure into three phases:
 Client starts sending a segment with sequence number of 1, containing 140B of data, and declaring that its receiving window size is 200B (Seq#1, 140B, WS = 200). As soon as the client sends this segment through the network, it will update its sending window. By updating, the ***NXT*** pointer will point to the byte 141, since 140B is sent and the client is ready to send from 141th byte. Remember that, at this time, the sending window will not slide. Let's assume segment with sequence number 1 is received by the server. As a result of receiving the segment by the server, the server's receiving buffer gets updated. The update is in a way that the sliding window of receiving buffer slides with the amount of received bytes and along with that, ***NXT*** pointer points to the next byte (141th). Now, suppose the server successfully received the segment from the client and in reply sends its own data segment which carries payload of 80B as well as this segment contains ACK No. 141. It means that this segment is not only data segment, but also an acknowledgment of previous data segment. As soon as the server sends its data segment, it will update the ***NXT*** pointer in its sending window. As soon as the client receives the segment from the server, it realizes that its sent bytes have been received successfully and it can slide its sending window and update its corresponding pointers. As the segment the server has sent is data segment, the client receives the data and slides its receiving window. After that, the client sends a pure ACK segment with its associated seq num. I assume that the third segment from client is in transit through the network an has not been received to the server yet.
 
 ![picture](data/example1.png)
+
+**Phase 2)**
+
+So the third segment was pure ACK which was issued by TCP client and I assumed that this segment is in transit over the network. Now let's suppose application on TCP server generates 280B of data to be sent to the client at this moment. So the question is Can TCP server create 280B of data segment? The answer is NO. Just take a look at the size of the receiving window/sending window of the client/server. The server can only send 120B of data as it is the remaining amount of bytes in sending window of the server. TCP peer is not allowed to violate the send or receive window at any time. So, you can see that TCP server sends the segment 4, but the segment 4 carries application payload of 120B. So, TCP can only send 120B of data at this point of time, though the application has generated 280B of data, therefore, TCP server has still (280 - 120 = 160B) of data pending to be sent to the network. As usual, by receiving the segment in client, the receiving window in client will slide, and corresponding ***NXT*** pointer will be updated. As a result, the client will generate the ACK segment for the received segment from the server. Now, again let's assume that this ACK segment is also in transit over the network and it has not yet reached the TCP server. At this point, the TP server's send window is completely exhausted. TCP server cannot sent any data to client unless its send window make some room (The space between ***NXT*** pointer and window margin).
+
+![picture](data/example2.png)
+
+**Phase 3)**
+
+At this point, let's assume that segment 3 and segment 5 has reached to the server at the same time. Just remember that these segments are pure ACKs. As soon as the server's sending window is updated, it will send the remaining bytes (160B). Since the window size is 200B, all of the remaining bytes can bi shipped. The client reseives the segment and as usual slies its receiving window by 160B, and after that it sends ACK back to the server. So, the server slides its sending window.
+
+![picture](data/example3.png)
+
+To summarize what we have learnt from the above example:
+* Reception of data segment leads to receive window to slide.
+* Reception of ACK leads to send window to slide.
+* Reception of data segment + ACK leads to receive and send window to slide.
+* Sending of data segment updates next pointer of send window.
+* Sending of the ACK updates nothing on sender's send or receive window.
+* When there is no data segment or ACK in transit, no pending data segment or ACK, send and receive windows are clones on two sides.
+
+ ```
+ Send window of Sender = Receive Window of Receiver
+ Receive Window of Sender = Send Window of Receiver
+ ```
+
+ Further, I'm going to explain about **TCP Tinygrams**. TCP tinygrams are TCP data segments carrying application payload of considerable small sizes as compared to the TCP overhead (TCP header size). TCP default header size is 20B (without option field). If TCP payload is mere 2-5 bytes being carried by TCP packets, then such packets are terms as TCP tinygrams. If TCP pushes too many tinygrams into the network, then much of the network bandwidth and resources are wasted by useless TCP overhead data rather than by TCP useful application data (payload). The solution to this problem is an algorithm called **Nagle algorithm**. This algorithm avoids TCP sender to send tinygrams into the network, unless there is no choice. Suppose the TCP server has been configured to avoid sending data segments of size less than 100B, and there is 80B of data is about to send, and also the TCP server is configured to support Nagle's algorithm. In this state, TCP server does not send 80B immediately, and wait for:
+ * Either application sends more data (It means that the TCP waits for another incoming data to cumulatively cross the threshold)
+ * Or all outstanding data segments have been acknowledged
+
+![picture](data/nagle.png)
