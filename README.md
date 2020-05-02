@@ -290,3 +290,41 @@ To summarize what we have learnt from the above example:
  * Or all outstanding data segments have been acknowledged
 
 ![picture](data/nagle.png)
+
+### TCP window resizing
+
+TCP is **adaptive protocol**, meaning it responds to network or recipient state dynamically. TCP is intelligent enough to understand the status of its peers. Therefore, it can resize its sending window to decrease its sending rate.
+```
+Smaller size send and receive window = Lesser the rate of data exchange
+Bigger size send and receive window = Faster the rate of data exchange
+```
+Generally, two factors directly affect TCP rate:
+![picture](data/tcp_rate.png)
+
+In this section, I am going to dive a little dip into recipient's capacity which is denoted by receive window size used for Flow Control. According to below topology, the rate at which the sender sends is more than the rate at which the receiver receives. Therefore, receiver causes congestion in the network.
+
+![picture](data/droptopology.png)
+
+So, the receiver drops packets. The receiver should have a mechanism to tell the sender to slow down its sending rate. For example, in below diagram, it shows that the sender A sends data to receiver B. At this point of time, both peers have the same window size. A sends 140B of data, and B receives it, slides its window, and delivers received bytes to the application. Up to this time, TCP only delivers 40 bytes to the application, and 100 bytes are pending to be sent to upper layer. At this time, TCP in receiver side gets penalty, and shrinks its own receiving window by 100bytes (the amount of bytes which is pending to be sent to upper layer). So, the receiver sends an ACK to the sender with WS of 260. After that, the sender shrinks its sending window to which the receiver has declared its receiving window. By now, the receiver has delivered remaining 100bytes to the application, and as a result, it restores the size of its window.
+
+![picture](data/windowshrink.png)
+
+Suppose each time of sending data from sender to receiver, the receiver shrinks its window size and inform it via ACK segment to the server. If this process goes on, the receiver window size and eventually the sender's window size will equals to zero. At this time no sending or receiving data will be done. The solution for this situation is **Window Openning ACK segment**. If let's say X bytes of pending bytes in receiving side is delivered to the application, receiving window will expand to X bytes. So, the receiver generates a new ACK message and sends it to the sender to inform of its capability to receive X bytes. Now, what if the ACK is lost in the network? TCP is reliable only for data segments and it is not reliable for ACK segments. So, what if the Window Openning ACK is lost? In this situation both peers go to Deadlock situation. TCP receiver has no idea that Window Openning ACK has been lost, it believes TCP sender has no data to send. also, TCP sender would continue to have send window size of 0. The solution for Deadlock situation is **Probe Segment** or **TCP Zero Window Probe** segment. When the sender receives ACK with window size of 0, it sets the timer to RTO starts the timer. As soon as the timer finishes, the sender sends Probe segment (1B data with the sequence number with which is supposed to send the next bytes). The timer to send probe segment is called Persistent timer whose initial value is set to 1 RTO. Subsequent probe segments are sent as per exponential back off. TCP never gives up sending probe segments. Receiver, after receiving probe segment, will respond to the sender with its current window size segment called **Zero Window Probe ACK**. But there is also another problem. If the receiver responses its receive window size by a very small size (say 5B), it will lead to transmission of data segments of very small sized which is inefficient. This problem is called **Silly Window Syndrome**(SWS). SWS is a situation when there is an exchange of small sized TCP data segments (Tinygrams) on a TCP connection. This leads to network under-utilization because useful data shipped per RTT is very less as compared to header overhead.
+
+Useful statement for recognizing tinygrams:
+```
+Ethernet header + IP header + TCP header >> App Data
+```
+![picture](data/sws.png)
+
+SWS avoidance rule:
+```
+if(usable_recv_window_size < min(MSS, 1/2 of receiver's original buffer space))
+  then Advertise receive window size as Zero
+```
+When the above condition goes from TRUE to FALSE for TCP receiver, TCP receiver triggers window openning ACK.
+
+(MSS stands for Maximum Segment Size, meaning that maximum 1460 bytes of application data which TCP data segments will carry with them)
+
+
+## Congestion Control
