@@ -328,3 +328,26 @@ When the above condition goes from TRUE to FALSE for TCP receiver, TCP receiver 
 
 
 ## Congestion Control
+
+Instead of flow control which is driven by TCP receiver, congestion control is driven by TCP server. What if the TCP receiver is not slow but it is the network in the middle between sender and receiver which is slow. In this case, TCP receiver would not reduce its receive window size because it cannot find whether TCP sender itself is sending bytes at low rate or TCP sender is not slow but network is congested and dropping the segments making sender appear slow. To cope-up with the slow network(slow routers, slow links, less memory, etc.), TCP uses its Congestion Control Procedures. Congestion Control Procedure is triggered by sender without any assistance/feedback from TCP receiver.  Congestion Control Procedure is implemented two meet two certain goals:
+* TCP sender must slow down when it has reason to believe the network is about to be congested.
+* TCP sender must speed up when it has reason to believe the network is recovered.
+So the challenge is to determine exactly when and how TCP should slow down, and when it can speed up again. Without congestion control procedure, slow network would drop packet only to trigger TCP sender to retransmit lost segments, making the situation even worse. Congestion Control Procedure enable TCP sender to adopt itself to ever changing dynamic network state. There is no explicit signaling mechanism to detect the existence of congestion in the network. Slow-down routers would not send any feedback to TCP sender to report the existence of congestion. Congestion Control Procedure can be roughly divided into three parts:
+1. TCP sender somehow detects that congestion is about to happen.
+2. TCP sender slow down the rate of sending segments and determine how slow
+3. TCP sender somehow should be able to detect that network congestion state is improved, and it can increase the rate of sending data, and also determine how fast.
+TCP sender maintains another window called **Congestion Window**. TCP sender must inject packet in the network at the rate at which network can handle, or receiver can handle, whichever is less. Receiver's receive window restrict the sender from injecting the packets at the rate receiver cannot handle. But how to restrict the sender from injecting the packets at the rate network can handle. We need an additional restriction on TCP sender's send window, and that restriction is additional window (Congestion Window).
+```
+W = min(cwnd, awnd)
+cwnd = size of congestion window
+awnd = size of receiver's advertised window
+```
+Congestion window is nothing but the measure of Network Capacity. Using the above relation, TCP sender is allowed to send W more bytes into the network. We have already seen **awnd** is variable and keep on changing during the course of communication. Likewise, **cwnd** is also a variable and keep on changing depending in traffic-carrying capacity of network. Thus, values of W, cwnd and awnd have to be dynamically updated by the TCP sender during the course of TCP connection.
+
+TCP congestion control procedures involves two algorithms:
+
+![picture](data/congestionalgorithm.png)
+
+Slow Start: This algorithm executes when connection is established afresh. For a new fresh connection, TCP sender do not know the appropriate value of cwnd, therefore cwnd = 1MSS. Its because TCP sender has no idea about the capacity of the network it is using. So, the ultimate goal in this algorithm is to determine the accurate value of cwnd which allow sender to send data at the throttle rate. TCP sender starts injecting packet in the network, starting at a lower rate, and increasing the rate **exponentially** and keep on increasing until certain conditions are met.
+
+Congestion Avoidance: This algorithm executes immediately after slow start has finished. At this time, TCP sender continues to inject more packet increasing the rate **linearly** until packet loss is detected.
