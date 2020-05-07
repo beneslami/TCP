@@ -364,8 +364,18 @@ Let's illustrate the algorithm by an example. Suppose 3-way handshake has been c
 
 At the stage of cwnd = 16, the sending window will be 10, since it is the minimum amount between cwnd and awnd. So, per RTT, cwnd is doubled. This is called **Multiplicative Increase**.
 
-cwnd is doubled per good ACK only. Good ACK is the ACK whose ack# is the largest ever received by TCP sender. if awnd is very large (65535), then cwnd keeps on doubling per good ACK received . A stage is reached when cwnd shall be so large that sender would experience a packet loss. The objective of slow start algorithm is to enable TCP sender to make use of network capacity to its limits as soon as possible, otherwise it shall lead to network under-utilization. 
+cwnd is doubled per good ACK only. Good ACK is the ACK whose ack# is the largest ever received by TCP sender. if awnd is very large (65535), then cwnd keeps on doubling per good ACK received . A stage is reached when cwnd shall be so large that sender would experience a packet loss. The objective of slow start algorithm is to enable TCP sender to make use of network capacity to its limits as soon as possible, otherwise it shall lead to network under-utilization. Let's see the slow start algorithm in a graph. Suppose two TCP peers have already done 3-way handshake and they agree to set their flow control window to 200 (awnd = 200), and we suppose that awnd will remain steady. In addition, TCP server maintains one more variable called **ssthresh** which stands for Slow Start Threshold. When 3-way handshake has been done, always the value of ssthresh will equal to awnd. ssthresh variable represents the last best estimate of network capacity when segment loss occurs. After all, TCP server maintains third variable cwnd which stands for Congestion Window.
 
+At the time of start of slow start algorithm, the size of congestion window initialized to 1 (1MSS). This algorithm is triggered by TCP sender and each time it receives good ACK, it doubles the amount of cwnd. So, slow start graph is exponential graph. Suppose when cwnd is 128, packet loss occurs. So, when cwnd = 128, TCP sender detects packet loss by experiencing RTO. At this time two things happen:
+1. cwnd will be set to 1.
+2. the value of ssthresh will be the maximum amount between cwnd/2 and 2.
+After these two steps, slow start algorithm starts operating again. Once the cwnd reaches the newest ssthresh, Congestion Avoidance algorithm will start operating and cwnd value increases linearly by passing each RTT. (cwnd >= ssthresh)
+
+![picture](data/AIMD1.png)
+
+Above graph exposes one weakness, which is whenever TCP server faces packet loss, it has to start sending packets from beginning.TCP designer have been thinking about mitigating the problem since it is a very aggressive corrective measures as it lead to network under-utilization.
+
+![picture](data/slowstartflowchart.png)
 
 #### Congestion Avoidance:
 This algorithm executes immediately after slow start has finished. At this time, TCP sender continues to inject more packet increasing the rate **linearly** until packet loss is detected.
