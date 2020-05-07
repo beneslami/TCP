@@ -348,6 +348,24 @@ TCP congestion control procedures involves two algorithms:
 
 ![picture](data/congestionalgorithm.png)
 
-Slow Start: This algorithm executes when connection is established afresh. For a new fresh connection, TCP sender do not know the appropriate value of cwnd, therefore cwnd = 1MSS. Its because TCP sender has no idea about the capacity of the network it is using. So, the ultimate goal in this algorithm is to determine the accurate value of cwnd which allow sender to send data at the throttle rate. TCP sender starts injecting packet in the network, starting at a lower rate, and increasing the rate **exponentially** and keep on increasing until certain conditions are met.
+#### Slow Start:
+This algorithm executes when connection is established afresh. For a new fresh connection, TCP sender do not know the appropriate value of cwnd, therefore cwnd = 1MSS. Its because TCP sender has no idea about the capacity of the network it is using. So, the ultimate goal in this algorithm is to determine the accurate value of cwnd which allow sender to send data at the throttle rate. TCP sender starts injecting packet in the network, starting at a lower rate, and increasing the rate **exponentially** and keep on increasing until certain conditions are met. The goal of this algorithm is to determine the maximum rate at which the TCP sender can inject the segments into the network without experiencing packet loss. Slow start algorithm is triggered on TCP sender side when:
+1. New connection has just established.
+2. Retransmission timeout (RTO) for a data segment happen (packet loss).
+3. When TCP sender do not send any data and stay idle for some time.
 
-Congestion Avoidance: This algorithm executes immediately after slow start has finished. At this time, TCP sender continues to inject more packet increasing the rate **linearly** until packet loss is detected.
+To begin with, initial value of cwnd is set to 1MSS in above three cases. Therefore, number of bytes sender can send in the first data-segment is W:
+```
+W = min(cwnd=1, awnd)
+```
+Let's illustrate the algorithm by an example. Suppose 3-way handshake has been completed and the connection is slow start phase. All units are in MSS for simplicity, initial cwnd is 1, MSS = 1460B and awnd = 10MSS. size of sending window W is min(cwnd, awnd).
+
+![picture](data/slowstart.png)
+
+At the stage of cwnd = 16, the sending window will be 10, since it is the minimum amount between cwnd and awnd. So, per RTT, cwnd is doubled. This is called **Multiplicative Increase**.
+
+cwnd is doubled per good ACK only. Good ACK is the ACK whose ack# is the largest ever received by TCP sender. if awnd is very large (65535), then cwnd keeps on doubling per good ACK received . A stage is reached when cwnd shall be so large that sender would experience a packet loss. The objective of slow start algorithm is to enable TCP sender to make use of network capacity to its limits as soon as possible, otherwise it shall lead to network under-utilization. 
+
+
+#### Congestion Avoidance:
+This algorithm executes immediately after slow start has finished. At this time, TCP sender continues to inject more packet increasing the rate **linearly** until packet loss is detected.
