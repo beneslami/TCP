@@ -406,4 +406,4 @@ Total behavior of TCP congestion window diagram is like below
 
 Total flowchart of TCP is as below:
 
-![picture](data/tcpflowchart.png)
+![picture](data/TCPflowchart.png)
