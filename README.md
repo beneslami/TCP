@@ -378,4 +378,32 @@ Above graph exposes one weakness, which is whenever TCP server faces packet loss
 ![picture](data/slowstartflowchart.png)
 
 #### Congestion Avoidance:
-This algorithm executes immediately after slow start has finished. At this time, TCP sender continues to inject more packet increasing the rate **linearly** until packet loss is detected.
+This algorithm executes immediately after slow start has finished. At this time, TCP sender continues to inject more packet increasing the rate **linearly** until packet loss is detected. TCP is always in a constant try to send as maximum data bytes as possible into the network while respecting network capacity and receiver's capacity. In Congestion Avoidance phase, TCP sender keep probing the network for any additional bandwidth/capacity if it has to offer to the connection, but, like slow-start, TCP do not probe network as aggressively in this phase. So, in this phase, cwnd is increased linearly by 1MSS for each successfully received good ACK. This is called **Additive Increase**. When TCP sender detects the packet loss in congestion avoidance phase, it triggers congestion control selection procedure.
+
+The important question is How TCP decides which algorithm it should execute? Slow Start or Congestion Avoidance? and When? The value of ssthresh determines which algorithm to execute next.  
+
+One important mechanism to improve Slow Start and Congestion Avoidance algorithm is **Fast Recovery**. We assumed that packet loss is detected by TCP sender due to RTO and not due to reception of dupACKs. There should be a way to quickly fill the network bandwidth after facing packet loss. TCP triggers a different Procedures called **Fast Recovery** if packet loss is detected by TCP sender due to dupACK instead of RTO. Fast Recovery is the process by virtue of which TCP sender avoids restarting from the very beginning (cwnd =1), instead it choose to slow down the rate of data to almost half when packet loss is detected.
+
+![picture](data/fastrecovery.png)
+
+Shortly, I demonstrate variable updates when each timeout or 3dupACK happens:
+
+- packet loss due to RTO:
+
+|Reason for pkt loss | cwnd | ssthresh | explanation |
+|:-------------------|:-----|:--------:|:-----------:|
+|RTO times out | reset to 1 | max(cwnd/2, 2) | Restart slow-start algorithm |
+
+- Packet loss due to 3-dupACK
+
+|Reason for pkt loss | cwnd | ssthresh | explanation |
+|:-------------------|:-----|:--------:|:-----------:|
+| 3-dupACK received | = cwnd/2 + 3, When good ACK is received then cwnd = ssthresh | = cwnd/2 | Fast retransmit + Fast recovery |
+
+Total behavior of TCP congestion window diagram is like below
+
+![picture](data/AIMD_final.png)
+
+Total flowchart of TCP is as below:
+
+![picture](data/tcpflowchart.png)
